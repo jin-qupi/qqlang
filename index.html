@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Q언어 인터프리터</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .left-header {
+            display: flex;
+            align-items: center;
+        }
+        .interpreter-title {
+            color: #007BFF; /* 파란색 */
+            font-size: 18px;
+            font-weight: bold;
+            margin-right: 20px; /* 제목과 버튼 사이의 간격 */
+        }
+        .run-button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .run-button:hover {
+            background-color: #45a049;
+        }
+        .footer-button {
+            padding: 10px 20px;
+            background-color: #008CBA;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            margin-right: 10px; /* 버튼 사이의 간격 */
+        }
+        .footer-button:hover {
+            background-color: #007B9E;
+        }
+        .error-message {
+            color: red;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        td {
+            padding: 5px;
+            vertical-align: top;
+        }
+        .line-number {
+            width: 30px;
+            text-align: center;
+            font-weight: bold;
+            border-right: 1px solid #000;
+            user-select: none;
+        }
+        .line-content {
+            width: 100%;
+            border: none;
+            outline: none;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="left-header">
+            <span class="interpreter-title">Q language interpreter</span>
+            <a href="https://qpi-labels.github.io/main/" class="footer-button">Q-Pi 동아리사이트</a>
+        </div>
+        <button class="run-button" onclick="runCode()">실행</button>
+    </div>
+
+    <table id="editor">
+        <tr id="line-row-1">
+            <td class="line-number">1</td>
+            <td><input type="text" class="line-content" id="line1" onkeydown="handleKeyDown(event, 1)"></td>
+        </tr>
+    </table>
+
+    <span id="error-message" class="error-message"></span>
+
+    <script>
+        let lineNumber = 1;
+        let variables = {};
+
+        function handleKeyDown(event, currentLine) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                addNewLine();
+            } else if (event.key === 'Backspace') {
+                checkBackspace(event, currentLine);
+            } else if (event.key === 'ArrowUp') {
+                moveCursorUp(currentLine);
+            } else if (event.key === 'ArrowDown') {
+                moveCursorDown(currentLine);
+            }
+        }
+
+        function addNewLine() {
+            lineNumber++;
+            const editor = document.getElementById('editor');
+
+            const newRow = document.createElement('tr');
+            newRow.id = `line-row-${lineNumber}`;
+
+            const lineNumCell = document.createElement('td');
+            lineNumCell.className = 'line-number';
+            lineNumCell.textContent = lineNumber;
+
+            const lineContentCell = document.createElement('td');
+            const lineContentInput = document.createElement('input');
+            lineContentInput.type = 'text';
+            lineContentInput.className = 'line-content';
+            lineContentInput.id = `line${lineNumber}`;
+            lineContentInput.onkeydown = (event) => handleKeyDown(event, lineNumber);
+
+            lineContentCell.appendChild(lineContentInput);
+
+            newRow.appendChild(lineNumCell);
+            newRow.appendChild(lineContentCell);
+            editor.appendChild(newRow);
+
+            lineContentInput.focus();
+        }
+
+        function checkBackspace(event, currentLine) {
+            const lineContent = document.getElementById(`line${currentLine}`);
+            if (lineContent.value === '' && currentLine > 1) {
+                event.preventDefault(); // 기본 백스페이스 동작 방지
+                const rowToDelete = document.getElementById(`line-row-${currentLine}`);
+                rowToDelete.remove();
+                lineNumber--;
+
+                // 나머지 줄 번호 업데이트
+                for (let i = currentLine; i <= lineNumber; i++) {
+                    const lineRow = document.getElementById(`line-row-${i + 1}`);
+                    lineRow.id = `line-row-${i}`;
+                    const lineNumCell = lineRow.querySelector('.line-number');
+                    lineNumCell.textContent = i;
+                    const lineContentInput = lineRow.querySelector('.line-content');
+                    lineContentInput.id = `line${i}`;
+                    lineContentInput.onkeydown = (event) => handleKeyDown(event, i);
+                }
+
+                // 이전 줄로 포커스 이동
+                const previousLineContent = document.getElementById(`line${currentLine - 1}`);
+                previousLineContent.focus();
+            }
+        }
+
+        function moveCursorUp(currentLine) {
+            if (currentLine > 1) {
+                const previousLineContent = document.getElementById(`line${currentLine - 1}`);
+                previousLineContent.focus();
+            }
+        }
+
+        function moveCursorDown(currentLine) {
+            if (currentLine < lineNumber) {
+                const nextLineContent = document.getElementById(`line${currentLine + 1}`);
+                nextLineContent.focus();
+            }
+        }
+
+        function runCode() {
+            const editor = document.getElementById('editor');
+            const errorMessageElement = document.getElementById('error-message');
+            errorMessageElement.textContent = ''; // 초기화
+
+            const firstLineValue = document.getElementById('line1').value.trim().replace(/\s+/g, '');
+
+            if (firstLineValue !== 'thof' && firstLineValue !== 'threeonefour') {
+                errorMessageElement.textContent = `1번째 줄에서 오류입니다: 'thof' 또는 'threeonefour'가 필요합니다.`;
+                return;
+            }
+
+            let commands = [];
+            let errorLine = null;
+
+            for (let i = 2; i <= lineNumber; i++) {
+                const lineContent = document.getElementById(`line${i}`).value.trim();
+                if (lineContent !== '') {
+                    commands.push(...lineContent.split('~').map(cmd => cmd.trim()));
+                }
+            }
+
+            let output = '>>>';
+
+            try {
+                commands.forEach((command, index) => {
+                    if (errorLine) return; // 이미 오류가 발생한 경우 실행 중지
+
+                    if (command.startsWith('qne')) {
+                        const match = command.match(/^qne\s+([a-zA-Z][a-zA-Z0-9]*)\s*=\s*([\d.]+)$/);
+                        if (match) {
+                            const [_, varName, value] = match;
+                            variables[varName] = parseFloat(value);
+                        } else {
+                            errorLine = findErrorLine(index + 2);
+                        }
+                    } else if (command.startsWith('pri')) {
+                        const match = command.match(/^pri\s+([a-zA-Z][a-zA-Z0-9]*)$/);
+                        if (match) {
+                            const [_, varName] = match;
+                            if (variables.hasOwnProperty(varName)) {
+                                output += ` ${variables[varName]}`;
+                            } else {
+                                errorLine = findErrorLine(index + 2);
+                            }
+                        } else {
+                            errorLine = findErrorLine(index + 2);
+                        }
+                    } else if (command !== '') {
+                        errorLine = findErrorLine(index + 2);
+                    }
+                });
+
+                if (errorLine) {
+                    errorMessageElement.textContent = `${errorLine}번째 줄에서 오류입니다.`;
+                } else {
+                    const newWindow = window.open("", "_blank", "width=300,height=200");
+                    newWindow.document.write(`<pre style='font-size:24px;'>${output}</pre>`);
+                    newWindow.document.close();
+                }
+            } catch (error) {
+                errorMessageElement.textContent = '코드 실행 중 오류가 발생했습니다.';
+            }
+        }
+
+        function findErrorLine(commandIndex) {
+            let lineCounter = 1;
+            let accumulatedCommands = 0;
+            for (let i = 2; i <= lineNumber; i++) {
+                const lineContent = document.getElementById(`line${i}`).value.trim();
+                const commandCount = lineContent.split('~').length;
+                accumulatedCommands += commandCount;
+
+                if (accumulatedCommands >= commandIndex) {
+                    return i;
+                }
+            }
+            return null;
+        }
+    </script>
+</body>
+</html>
